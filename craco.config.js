@@ -16,7 +16,7 @@ module.exports = {
 
       const wasmLoader = {
         test: /\.wasm$/,
-        include: /node_modules\/wormhole-messenger-solana/,
+        include: /node_modules\/(bridge|token-bridge)/,
         loaders: ["wasm-loader"],
       };
 
