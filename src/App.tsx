@@ -35,9 +35,9 @@ import { useSnackbar } from "notistack";
 import React, { useCallback, useState } from "react";
 import { useEthereumProvider } from "./contexts/EthereumProviderContext";
 import { useSolanaWallet } from "./contexts/SolanaWalletContext";
-import { address as ETH_CONTRACT_ADDRESS } from "./contract-addresses/development";
-import { address as BSC_CONTRACT_ADDRESS } from "./contract-addresses/development2";
-import { Messenger__factory } from "./ethers-contracts";
+// import { address as ETH_CONTRACT_ADDRESS } from "./contract-addresses/development";
+// import { address as BSC_CONTRACT_ADDRESS } from "./contract-addresses/development2";
+// import { Messenger__factory } from "./ethers-contracts";
 
 interface ParsedVaa {
   consistency_level: number;
@@ -53,7 +53,7 @@ interface ParsedVaa {
 }
 
 const SOLANA_BRIDGE_ADDRESS = "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o";
-const SOLANA_PROGRAM = require("./contract-addresses/solana.json").programId;
+// const SOLANA_PROGRAM = require("./contract-addresses/solana.json").programId;
 const SOLANA_HOST = "http://localhost:8899";
 const WORMHOLE_RPC_HOSTS = ["http://localhost:7071"];
 
@@ -62,8 +62,8 @@ const chainToNetworkDec = (c: ChainId) => (c === 2 ? 1337 : c === 4 ? 1397 : 0);
 const chainToNetwork = (c: ChainId) =>
   hexStripZeros(hexlify(chainToNetworkDec(c)));
 
-const chainToContract = (c: ChainId) =>
-  c === 2 ? ETH_CONTRACT_ADDRESS : c === 4 ? BSC_CONTRACT_ADDRESS : "";
+// const chainToContract = (c: ChainId) =>
+//   c === 2 ? ETH_CONTRACT_ADDRESS : c === 4 ? BSC_CONTRACT_ADDRESS : "";
 
 const chainToName = (c: ChainId) =>
   c === 1 ? "Solana" : c === 2 ? "Ethereum" : c === 4 ? "BSC" : "Unknown";
@@ -148,47 +148,47 @@ function EVMChain({
 
   const sendClickHandler = useCallback(() => {
     if (!signer || !provider) return;
-    (async () => {
-      try {
-        await switchProviderNetwork(provider, chainId);
-        const sendMsg = Messenger__factory.connect(
-          chainToContract(chainId),
-          signer
-        );
-        const nonce = createNonce();
-        // Sending message to Wormhole and waiting for it to be signed.
-        // 1. Send string transaction. And wait for Receipt.
-        // sendStr is defined in example contract Messenger.sol
-        const sendTx = await sendMsg.sendStr(
-          new Uint8Array(Buffer.from(messageText)),
-          nonce
-        );
-        const sendReceipt = await sendTx.wait();
-        // 2. Call into wormhole sdk to get this message sequence.
-        // Sequence is specific to originator.
-        const sequence = parseSequenceFromLogEth(
-          sendReceipt,
-          await sendMsg.wormhole()
-        );
-        // 3. Retrieve signed VAA. For this chain and sequence.
-        const { vaaBytes } = await getSignedVAAWithRetry(
-          WORMHOLE_RPC_HOSTS,
-          chainId,
-          getEmitterAddressEth(chainToContract(chainId)),
-          sequence.toString()
-        );
-        // 4. Parse signed VAA and store it for display and use.
-        // VAA use example is in part2.
-        const { parse_vaa } = await importCoreWasm();
-        const parsedVaa = parse_vaa(vaaBytes);
-        addMessage(parsedVaa);
-      } catch (e) {
-        console.log("EXCEPTION in Send: " + e);
-        enqueueSnackbar("EXCEPTION in Send: " + parseError(e), {
-          persist: false,
-        });
-      }
-    })();
+    // (async () => {
+    //   try {
+    //     await switchProviderNetwork(provider, chainId);
+    //     const sendMsg = Messenger__factory.connect(
+    //       chainToContract(chainId),
+    //       signer
+    //     );
+    //     const nonce = createNonce();
+    //     // Sending message to Wormhole and waiting for it to be signed.
+    //     // 1. Send string transaction. And wait for Receipt.
+    //     // sendStr is defined in example contract Messenger.sol
+    //     const sendTx = await sendMsg.sendStr(
+    //       new Uint8Array(Buffer.from(messageText)),
+    //       nonce
+    //     );
+    //     const sendReceipt = await sendTx.wait();
+    //     // 2. Call into wormhole sdk to get this message sequence.
+    //     // Sequence is specific to originator.
+    //     const sequence = parseSequenceFromLogEth(
+    //       sendReceipt,
+    //       await sendMsg.wormhole()
+    //     );
+    //     // 3. Retrieve signed VAA. For this chain and sequence.
+    //     const { vaaBytes } = await getSignedVAAWithRetry(
+    //       WORMHOLE_RPC_HOSTS,
+    //       chainId,
+    //       getEmitterAddressEth(chainToContract(chainId)),
+    //       sequence.toString()
+    //     );
+    //     // 4. Parse signed VAA and store it for display and use.
+    //     // VAA use example is in part2.
+    //     const { parse_vaa } = await importCoreWasm();
+    //     const parsedVaa = parse_vaa(vaaBytes);
+    //     addMessage(parsedVaa);
+    //   } catch (e) {
+    //     console.log("EXCEPTION in Send: " + e);
+    //     enqueueSnackbar("EXCEPTION in Send: " + parseError(e), {
+    //       persist: false,
+    //     });
+    //   }
+    // })();
   }, [provider, signer, chainId, messageText, addMessage, enqueueSnackbar]);
 
   return (
@@ -221,73 +221,73 @@ function SolanaChain({
 
   const sendClickHandler = useCallback(() => {
     if (!publicKey || !signTransaction) return;
-    (async () => {
-      try {
-        const connection = new Connection(SOLANA_HOST, "confirmed");
-        const transferIx = await getBridgeFeeIx(
-          connection,
-          SOLANA_BRIDGE_ADDRESS,
-          publicKey.toString()
-        );
-        const { send_message_ix } = await import("wormhole-messenger-solana");
-        const messageKey = Keypair.generate();
-        const emitter = hexToNativeString(
-          await getEmitterAddressSolana(SOLANA_PROGRAM),
-          CHAIN_ID_SOLANA
-        );
-        if (!emitter) {
-          throw new Error(
-            "An error occurred while calculating the emitter address"
-          );
-        }
-        const ix = ixFromRust(
-          send_message_ix(
-            SOLANA_PROGRAM,
-            publicKey.toString(),
-            emitter,
-            messageKey.publicKey.toString(),
-            new Uint8Array(Buffer.from(messageText))
-          )
-        );
-        const transaction = new Transaction().add(transferIx, ix);
-        const { blockhash } = await connection.getRecentBlockhash();
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = publicKey;
-        transaction.partialSign(messageKey);
-        const signed = await signTransaction(transaction);
-        const txid = await connection.sendRawTransaction(signed.serialize());
-        console.log(txid);
-        await connection.confirmTransaction(txid);
-        const info = await connection.getTransaction(txid);
-        console.log(info);
-        if (!info) {
-          throw new Error(
-            "An error occurred while fetching the transaction info"
-          );
-        }
-        const sequence = parseSequenceFromLogSolana(info);
-        console.log(sequence);
-        console.log(emitter);
-        // 3. Retrieve signed VAA. For this chain and sequence.
-        const { vaaBytes } = await getSignedVAAWithRetry(
-          WORMHOLE_RPC_HOSTS,
-          chainId,
-          await getEmitterAddressSolana(SOLANA_PROGRAM),
-          sequence.toString()
-        );
-        // 4. Parse signed VAA and store it for display and use.
-        // VAA use example is in part2.
-        const { parse_vaa } = await importCoreWasm();
-        const parsedVaa = parse_vaa(vaaBytes);
-        console.log(parsedVaa);
-        addMessage(parsedVaa);
-      } catch (e) {
-        console.log("EXCEPTION in Send: " + e);
-        enqueueSnackbar("EXCEPTION in Send: " + parseError(e), {
-          persist: false,
-        });
-      }
-    })();
+    // (async () => {
+    //   try {
+    //     const connection = new Connection(SOLANA_HOST, "confirmed");
+    //     const transferIx = await getBridgeFeeIx(
+    //       connection,
+    //       SOLANA_BRIDGE_ADDRESS,
+    //       publicKey.toString()
+    //     );
+    //     const { send_message_ix } = await import("wormhole-messenger-solana");
+    //     const messageKey = Keypair.generate();
+    //     const emitter = hexToNativeString(
+    //       await getEmitterAddressSolana(SOLANA_PROGRAM),
+    //       CHAIN_ID_SOLANA
+    //     );
+    //     if (!emitter) {
+    //       throw new Error(
+    //         "An error occurred while calculating the emitter address"
+    //       );
+    //     }
+    //     const ix = ixFromRust(
+    //       send_message_ix(
+    //         SOLANA_PROGRAM,
+    //         publicKey.toString(),
+    //         emitter,
+    //         messageKey.publicKey.toString(),
+    //         new Uint8Array(Buffer.from(messageText))
+    //       )
+    //     );
+    //     const transaction = new Transaction().add(transferIx, ix);
+    //     const { blockhash } = await connection.getRecentBlockhash();
+    //     transaction.recentBlockhash = blockhash;
+    //     transaction.feePayer = publicKey;
+    //     transaction.partialSign(messageKey);
+    //     const signed = await signTransaction(transaction);
+    //     const txid = await connection.sendRawTransaction(signed.serialize());
+    //     console.log(txid);
+    //     await connection.confirmTransaction(txid);
+    //     const info = await connection.getTransaction(txid);
+    //     console.log(info);
+    //     if (!info) {
+    //       throw new Error(
+    //         "An error occurred while fetching the transaction info"
+    //       );
+    //     }
+    //     const sequence = parseSequenceFromLogSolana(info);
+    //     console.log(sequence);
+    //     console.log(emitter);
+    //     // 3. Retrieve signed VAA. For this chain and sequence.
+    //     const { vaaBytes } = await getSignedVAAWithRetry(
+    //       WORMHOLE_RPC_HOSTS,
+    //       chainId,
+    //       await getEmitterAddressSolana(SOLANA_PROGRAM),
+    //       sequence.toString()
+    //     );
+    //     // 4. Parse signed VAA and store it for display and use.
+    //     // VAA use example is in part2.
+    //     const { parse_vaa } = await importCoreWasm();
+    //     const parsedVaa = parse_vaa(vaaBytes);
+    //     console.log(parsedVaa);
+    //     addMessage(parsedVaa);
+    //   } catch (e) {
+    //     console.log("EXCEPTION in Send: " + e);
+    //     enqueueSnackbar("EXCEPTION in Send: " + parseError(e), {
+    //       persist: false,
+    //     });
+    //   }
+    // })();
   }, [
     publicKey,
     signTransaction,
