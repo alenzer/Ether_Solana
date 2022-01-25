@@ -5,7 +5,7 @@ import {
   isEVMChain,
 } from "@certusone/wormhole-sdk";
 import { TextField, Typography } from "@material-ui/core";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import useGetSourceParsedTokens from "../../hooks/useGetSourceParsedTokenAccounts";
 import useIsWalletReady from "../../hooks/useIsWalletReady";
@@ -54,8 +54,8 @@ export const TokenSelector = (props: TokenSelectorProps) => {
     ? setNFTSourceWalletAddress
     : setTransferSourceWalletAddress;
 
-  const handleOnChange = useCallback(
-    (newTokenAccount: ParsedTokenAccount | null) => {
+  const handleOnChange = useCallback(    
+    (newTokenAccount: ParsedTokenAccount | null) => {      
       console.log(newTokenAccount)
       if (!newTokenAccount) {
         dispatch(setSourceParsedTokenAccount(undefined));
@@ -73,7 +73,7 @@ export const TokenSelector = (props: TokenSelectorProps) => {
     ]
   );
 
-  const maps = useGetSourceParsedTokens(nft);
+  const maps = useGetSourceParsedTokens(nft);  
   const resetAccountWrapper = maps?.resetAccounts || (() => {}); //This should never happen.
 
   //This is only for errors so bad that we shouldn't even mount the component

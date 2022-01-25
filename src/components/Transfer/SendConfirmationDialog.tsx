@@ -116,29 +116,24 @@ function SendConfirmationContent({
               </Typography>
             </div>
           </div>
-        ) : null}
-        <TokenWarning
-          sourceAsset={sourceParsedTokenAccount?.mintKey}
-          sourceChain={sourceChain}
-          originChain={originChain}
-          targetAsset={targetAsset ?? undefined}
-          targetChain={targetChain}
-        />
+        ) : null}      
       </DialogContent>
       <DialogActions>
-        <Button variant="outlined" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={onClick}
-          size={"medium"}
-          disabled={!!countdown}
-        >
-          {!!countdown ? countdown.toString() : "Confirm"}
-        </Button>
-      </DialogActions>
+        <div style={{display:"flex", justifyContent:"space-around", width:"100%"}}>
+          <Button variant="outlined" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onClick}
+            size={"medium"}
+            disabled={!!countdown}
+          >
+            {!!countdown ? countdown.toString() : "Confirm"}
+          </Button>
+        </div>
+      </DialogActions>      
     </>
   );
 

@@ -293,13 +293,13 @@ export default function TokenPicker({
   }, []);
 
   const handleSelectOption = useCallback(
-    async (option: NFTParsedTokenAccount) => {
+    async (option: NFTParsedTokenAccount) => {      
       setSelectionError("");
       let newOption = null;
       try {
         //Covalent balances tend to be stale, so we make an attempt to correct it at selection time.
         if (getAddress && !option.isNativeAsset) {
-          newOption = await getAddress(option.mintKey, option.tokenId);
+          newOption = await getAddress(option.mintKey, option.tokenId);          
           newOption = {
             ...option,
             ...newOption,
@@ -353,11 +353,11 @@ export default function TokenPicker({
   );
 
   const marketChainTokens = marketsData?.tokens?.[chainId];
-  const featuredMarkets = marketsData?.tokenMarkets?.[chainId]?.[targetChain];
-
+  const featuredMarkets = marketsData?.tokenMarkets?.[chainId]?.[targetChain];   
+  
   const featuredOptions = useMemo(() => {
     // only tokens have featured markets
-    if (!nft && featuredMarkets) {
+    if (!nft && featuredMarkets) {      
       const ownedMarketTokens = options
         .filter(
           (option: NFTParsedTokenAccount) => featuredMarkets?.[option.mintKey]

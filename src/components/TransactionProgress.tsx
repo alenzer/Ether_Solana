@@ -33,7 +33,7 @@ export default function TransactionProgress({
   const classes = useStyles();
   const { provider } = useEthereumProvider();
   const [currentBlock, setCurrentBlock] = useState(0);
-  useEffect(() => {
+  useEffect(() => {    
     if (isSendComplete || !tx) return;
     if (isEVMChain(chainId) && provider) {
       let cancelled = false;

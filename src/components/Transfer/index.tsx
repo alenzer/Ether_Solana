@@ -92,40 +92,9 @@ function Transfer() {
         >
           <StepButton onClick={() => dispatch(setStep(0))}>Source</StepButton>
           <StepContent>
-            {activeStep === 0 ? <Source /> : <SourcePreview />}
+            <Source />
           </StepContent>
-        </Step>
-        <Step
-          expanded={activeStep >= 1}
-          disabled={preventNavigation || isRedeemComplete}
-        >
-          <StepButton
-            disabled={preventNavigation || isRedeemComplete || activeStep === 0}
-            onClick={() => dispatch(setStep(1))}
-          >
-            Target
-          </StepButton>
-          <StepContent>
-            {activeStep === 1 ? <Target /> : <TargetPreview />}
-          </StepContent>
-        </Step>
-        <Step expanded={activeStep >= 2} disabled={isSendComplete}>
-          <StepButton disabled>Send tokens</StepButton>
-          <StepContent>
-            {activeStep === 2 ? <Send /> : <SendPreview />}
-          </StepContent>
-        </Step>
-        <Step expanded={activeStep >= 3} completed={isRedeemComplete}>
-          <StepButton
-            onClick={() => dispatch(setStep(3))}
-            disabled={!isSendComplete || isRedeemComplete}
-          >
-            Redeem tokens
-          </StepButton>
-          <StepContent>
-            {isRedeemComplete ? <RedeemPreview /> : <Redeem />}
-          </StepContent>
-        </Step>
+        </Step>        
       </Stepper>
     </Container>
   );
