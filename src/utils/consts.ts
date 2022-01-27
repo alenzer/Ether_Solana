@@ -226,7 +226,7 @@ export const SOLANA_HOST = process.env.REACT_APP_SOLANA_API_URL
   : CLUSTER === "mainnet"
   ? clusterApiUrl("mainnet-beta")
   : CLUSTER === "testnet"
-  ? clusterApiUrl("devnet")
+  ? clusterApiUrl("testnet")
   : "http://localhost:8899";
 
 export const TERRA_HOST =

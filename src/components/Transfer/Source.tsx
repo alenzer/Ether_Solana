@@ -54,7 +54,8 @@ import {
   MIGRATION_ASSET_MAP,
   CLUSTER,
   CHAINS,
-  MULTI_CHAIN_TOKENS
+  MULTI_CHAIN_TOKENS,
+  SOLANA_HOST
 } from "../../utils/consts";
 import SolanaSelect from "../SolanaSelect";
 import EthereumSelect from "../EthereumSelect";
@@ -75,6 +76,49 @@ import {
   getEthereumNFT,
   getEthereumToken
 } from "../../utils/ethereum";
+
+import { Provider, BN } from '@project-serum/anchor';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { TokenListProvider } from '@solana/spl-token-registry';  
+import { Swap } from '@project-serum/swap';
+import { useSolanaWallet } from "../../contexts/SolanaWalletContext";
+
+//-------------------------------------------
+import {
+  // PublicKey,
+  Keypair,
+  Transaction,
+  SystemProgram,
+  Signer,
+} from "@solana/web3.js";
+
+import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+// import { BN, Provider } from "@project-serum/anchor";
+import {
+  // makeStyles,
+  Card,
+  // Button,
+  // Typography,
+  TextField,
+  useTheme,
+} from "@material-ui/core";
+import { ExpandMore, ImportExportRounded } from "@material-ui/icons";
+import { useSwapContext, useSwapFair } from "../context/Swap";
+import {
+  useDexContext,
+  useOpenOrders,
+  useRouteVerbose,
+  useMarket,
+  FEE_MULTIPLIER,
+} from "../context/Dex";
+import { useTokenMap } from "../context/TokenList";
+import { useMint, useOwnedTokenAccount } from "../context/Token";
+import { useCanSwap, useReferral } from "../context/Swap";
+// import TokenDialog from "./TokenDialog";
+// import { SettingsButton } from "./Settings";
+// import { InfoLabel } from "./Info";
+import { SOL_MINT, WRAPPED_SOL_MINT } from "../utils/pubkeys";
+
 
 interface MarketParsedTokenAccount extends NFTParsedTokenAccount {
   markets?: string[];
@@ -195,6 +239,138 @@ function Source() {
   const featuredMarkets = marketsData?.tokenMarkets?.[chainId]?.[targetChain];        
   const sourceNativeBalance = useTransactionFees(sourceChain);  
 
+  const solanaWallet:any = useSolanaWallet();
+
+  // const SRM = new PublicKey('SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt');
+  // const USDC = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGk');
+  // const wormhole = new PublicKey('a9muu4qvisctjvpjdbjwkb28deg915lyjkrzq19ji3fm');
+  // const WBTC = new PublicKey('9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E');
+  // const DECIMALS = 6;
+
+  // const {
+  //   fromMint,
+  //   toMint,
+  //   fromAmount,
+  //   slippage,
+  //   isClosingNewAccounts,
+  //   isStrict,
+  // } = useSwapContext();
+  const [fromMint, ] = useState(new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'));
+  const [toMint, ] = useState(new PublicKey('A9mUU4qviSctJVPJdBJWkb28deg915LYJKrzQ19ji3FM'));
+  const [fromAmount, ] = useState(1);
+  const [slippage, ] = useState(0.5);
+  const [isClosingNewAccounts, ] = useState(false);
+  const [isStrict, ] = useState(false);
+
+  // const { swapClient } = useDexContext();
+  const fromMintInfo = useMint(fromMint);
+  const toMintInfo = useMint(toMint);
+  const openOrders = useOpenOrders();
+  const route = useRouteVerbose(fromMint, toMint);
+  const fromMarket = useMarket(
+    route && route.markets ? route.markets[0] : undefined
+  );
+  const toMarket = useMarket(
+    route && route.markets ? route.markets[1] : undefined
+  );
+  const canSwap = useCanSwap();
+  const referral = useReferral(fromMarket);
+  const fair = useSwapFair();
+  let fromWallet = useOwnedTokenAccount(fromMint);
+  let toWallet = useOwnedTokenAccount(toMint);
+  const quoteMint = fromMarket && fromMarket.quoteMintAddress;
+  const quoteMintInfo = useMint(quoteMint);
+  const quoteWallet = useOwnedTokenAccount(quoteMint);
+
+
+  async function make_swapClient(wallet:any) {
+    const provider = new Provider(
+      new Connection('https://api.mainnet-beta.solana.com', 'recent'),
+      wallet,
+      Provider.defaultOptions(),
+    );
+    const tokenList = await new TokenListProvider().resolve();
+    return new Swap(provider, tokenList);
+  }
+
+  const swapNew = async () => {
+console.log("click swap");
+    const swapClient = await make_swapClient(solanaWallet);
+
+console.log('fromMintinfo');
+console.log(fromMintInfo);
+    if (!fromMintInfo || !toMintInfo) {
+      throw new Error("Unable to calculate mint decimals");
+    }
+console.log('fair');
+console.log(fair);
+    if (!fair) {
+      throw new Error("Invalid fair");
+    }
+console.log('quoteMint');
+console.log(quoteMint);
+    if (!quoteMint || !quoteMintInfo) {
+      throw new Error("Quote mint not found");
+    }
+
+    const amount = new BN(fromAmount * 10 ** fromMintInfo.decimals);
+    const isSol = fromMint.equals(SOL_MINT) || toMint.equals(SOL_MINT);
+    const wrappedSolAccount = isSol ? Keypair.generate() : undefined;
+
+    // Build the swap.
+    let txs = await (async () => {
+      if (!fromMarket) {
+        throw new Error("Market undefined");
+      }
+
+      const minExchangeRate = {
+        rate: new BN((10 ** toMintInfo.decimals * FEE_MULTIPLIER) / fair)
+          .muln(100 - slippage)
+          .divn(100),
+        fromDecimals: fromMintInfo.decimals,
+        quoteDecimals: quoteMintInfo.decimals,
+        strict: isStrict,
+      };
+      const fromOpenOrders = fromMarket
+        ? openOrders.get(fromMarket?.address.toString())
+        : undefined;
+      const toOpenOrders = toMarket
+        ? openOrders.get(toMarket?.address.toString())
+        : undefined;
+      const fromWalletAddr = fromMint.equals(SOL_MINT)
+        ? wrappedSolAccount!.publicKey
+        : fromWallet
+        ? fromWallet.publicKey
+        : undefined;
+      const toWalletAddr = toMint.equals(SOL_MINT)
+        ? wrappedSolAccount!.publicKey
+        : toWallet
+        ? toWallet.publicKey
+        : undefined;
+
+      return await swapClient.swapTxs({
+        fromMint,
+        toMint,
+        quoteMint,
+        amount,
+        minExchangeRate,
+        referral,
+        fromMarket,
+        toMarket,
+        // Automatically created if undefined.
+        fromOpenOrders: fromOpenOrders ? fromOpenOrders[0].address : undefined,
+        toOpenOrders: toOpenOrders ? toOpenOrders[0].address : undefined,
+        fromWallet: fromWalletAddr,
+        toWallet: toWalletAddr,
+        quoteWallet: quoteWallet ? quoteWallet.publicKey : undefined,
+        // Auto close newly created open orders accounts.
+        close: isClosingNewAccounts,
+      });
+    })();
+
+    await swapClient.program.provider.sendAll(txs);
+  }
+
   const featuredOptions = useMemo(() => {
     // only tokens have featured markets
     if (CLUSTER==="testnet" && !nft && maps?.tokenAccounts?.data){
@@ -214,7 +390,7 @@ function Source() {
               markets: featuredMarkets[option.mintKey].markets,
             } as MarketParsedTokenAccount)
         ); 
-        console.log(ownedMarketTokens)
+
       return [
         ...ownedMarketTokens,
         ...Object.keys(featuredMarkets)
@@ -478,6 +654,9 @@ function Source() {
             token={featuredOptions[targetSelectIndex]}
           />
           <Target />
+        </div>
+        <div onClick={ async () => {await swapNew()}}>
+          <h1>Click Here</h1>
         </div>
       </div> 
       <Send />     
