@@ -7,7 +7,7 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import { BetaContextProvider } from "./contexts/BetaContext";
 import { EthereumProviderProvider } from "./contexts/EthereumProviderContext";
-import { SolanaWalletProvider } from "./contexts/SolanaWalletContext";
+import { SolanaWalletProvider } from "./contexts/SolanaWalletContext.tsx";
 import ErrorBoundary from "./ErrorBoundary";
 import { theme } from "./muiTheme";
 import { store } from "./store";
@@ -21,10 +21,10 @@ ReactDOM.render(
           <SnackbarProvider maxSnack={3}>
             <BetaContextProvider>
               <SolanaWalletProvider>
-                <EthereumProviderProvider>
-                  <HashRouter>                      
-                    <App />
-                  </HashRouter>
+                <EthereumProviderProvider>                  
+                    <HashRouter>                      
+                      <App />
+                    </HashRouter>                  
                 </EthereumProviderProvider>
               </SolanaWalletProvider>
             </BetaContextProvider>
